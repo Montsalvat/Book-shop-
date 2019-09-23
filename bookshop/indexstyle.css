@@ -1,0 +1,276 @@
+//
+// Functions
+// ---------
+
+// Max-width is calculated using
+// ([width of marquee element including margin] * 
+//  [number of visible marquee elements at a time])
+// 
+// e.g. (512 * 3) = 1536
+@function containerWidth() { 
+  @return ($marqueeElementWidth * $visibleMarqueeElements);
+}
+
+// The width of this container is calculated as:
+// ([sets of marquee elements] * [parent container width])
+//
+// The sets of marquee elements is calculated as
+// ([marquee elements visible at a time] / [total marquee elements])
+//
+// Note that [total marquee elements] should be a whole number 
+// indicating an even number of sets
+//
+// In this example we have four visible marquee elements visible
+// at a time which means we must have two sets of elements which
+// gives us a container width of 2880px
+@function marqueeContainerWidth() { 
+  @return ($marqueeElementSets * $containerWidth) + px;
+}
+
+// We want our animation to seem like it's always scrolling horizontally.
+// To do that, we need the animation to repeat but when the animation repeats, 
+// user should not notice a change. To achieve this, we replicate the first
+// set of marquee elements and put them at the end. When this set is 
+// finally visible, the animation repeats and because we replicated the first
+// set, we do a sort of visual trick, swapping the original set of marquee
+// elements for the duplicates. This allows our animation to run infinitely
+// and appear as if it's not being repeated.
+//
+// To calculate how much we need to offset our marquee to create this effect
+// ([parent container width] * ([sets of marquee elements] - 1))
+// 
+// We subtract one from our total sets of marquee elements because we the last 
+// set of marquee elements visible so that the animation can repeat and our visual
+// trick works.
+//
+// transform: translateX(-3072px);
+
+@function translationLength() { 
+  @return -($containerWidth * ($marqueeElementSets - 1)) + px;
+}
+
+
+//
+// Mixins
+// ------
+
+// Output some transition code for silky smooth animations and transitions
+@mixin transition($timing: 350ms) { 
+  transition: all $timing cubic-bezier(.165,.84,.44,1);
+}
+
+
+//
+// Variables
+// ---------
+
+$visibleMarqueeElements: 3;
+$marqueeElementWidth: 512;
+$marqueeElementSets: 3;
+$containerWidth: containerWidth();
+$brandColor: #1b9dcf;
+$textColor: #333;
+
+
+//
+// Base Styles
+// -----------
+
+:root { 
+  background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/174608/723679-large-ghibli-wallpapers-2560x1440-ipad.jpg') no-repeat center center;
+  background-size: cover;
+  color: $textColor;
+  line-height: 1.5;
+  
+  // Selection color
+  ::selection {
+    background: rgba($brandColor, .25);
+  }
+}
+
+
+//
+// Layout
+// ------
+
+.container { 
+  margin-left: auto;
+  margin-right: auto;
+  max-width: $containerWidth + px;
+  position: relative;
+}
+
+.marquee { 
+  overflow: hidden;
+  height: 500px;
+  min-height: 100vh;
+  position: relative;
+  scroll-behavior: smooth;
+  transform: translate3d(0, 0, 0);
+  
+  &:before,
+  &:after { 
+    content: '';
+    display: block;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    width: 75px;
+    z-index: 2;
+  }
+  
+  &:before {
+    background: linear-gradient(to left, rgba($brandColor, 0), $brandColor 100%);
+    left: 0;
+  }
+  
+  &:after { 
+    background: linear-gradient(to right, rgba($brandColor, 0), $brandColor 100%);
+    right: -1px;
+  }
+}
+
+.marquee-container { 
+  animation: moveMarqueeItems 50s linear infinite;
+  align-items: center;
+  display: flex;
+  height: 500px;
+  min-height: 100vh;
+  left: 0;
+  overflow-x: auto;
+  position: absolute;
+  top: 0;
+  transform: translate3d(0, 0, 0);
+  width: marqueeContainerWidth();
+  
+  // Modifiers
+  &.-paused { 
+    animation-play-state: paused;
+  }
+}
+
+
+//
+// Marquee Items
+// -------------
+// Each item is 512px including margin right now
+
+.marquee-item { 
+  @include transition();
+  
+  background-color: white;
+  border: 0;
+  border-radius: 3px;
+  margin-left: 40px;
+  margin-right: 40px;
+  padding: 24px;
+  position: relative;
+  width: 384px;
+  
+  &:before { 
+    @include transition();
+    
+    background-color: white;
+    border-radius: 3px;
+    content: '';
+    display: block;
+    height: 100%;
+    left: 0;
+    opacity: .25;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: -1;
+  }
+  
+  &:nth-of-type(odd) { 
+    &:before { 
+      transform: translate(-15px, -15px);
+    }
+  }
+  
+  
+  &:nth-of-type(even) { 
+    &:before { 
+      transform: translate(-15px, 15px);
+    }
+  }
+  
+  &:hover { 
+     &:nth-of-type(odd) { 
+      &:before { 
+        transform: translate(-10px, -10px);
+      }
+    }
+
+
+    &:nth-of-type(even) { 
+      &:before { 
+        transform: translate(-10px, 10px);
+      }
+    }
+    
+    .marquee-item-inner { 
+      max-height: 500px;
+    }
+  }
+}
+
+.marquee-item-inner { 
+  @include transition(1s);
+  
+  max-height: 0;
+  overflow: hidden;
+  will-change: max-height;
+}
+
+.marquee-item-title { 
+  color: $textColor;
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 2;
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+.marquee-item-year { 
+  color: white;
+  font-size: 3rem;
+  font-weight: bold;
+  line-height: initial;
+  position: absolute;
+  right: 1rem;
+  text-shadow:
+   -1px -1px 0 #333,  
+    1px -1px 0 #333,
+    -1px 1px 0 #333,
+     1px 1px 0 #333;
+  top: 1rem;
+}
+
+.marquee-item-meta { 
+  border-top: 2px dotted rgba($textColor, .3);
+  font-size: .875rem;
+  padding-top: 1rem;
+  
+  @media (min-width: 30em) { 
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  p { 
+    margin-bottom: 0; 
+    margin-top: 0;
+    
+    &:first-of-type { 
+      margin-bottom: .25rem;
+    }
+  }
+}
+
+// Animation Keyframes
+@keyframes moveMarqueeItems { 
+  100% {
+    transform: translateX(translationLength());
+  }
+}
